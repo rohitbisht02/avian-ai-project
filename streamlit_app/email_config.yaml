@@ -1,0 +1,6 @@
+# Email credentials for Avian AI OTP login
+# Fill in your sender email and app password (never use your main password)
+# For Gmail, create an app password at https://myaccount.google.com/apppasswords
+
+EMAIL_SENDER: "avian02ai@gmail.com"
+EMAIL_PASSWORD: "testing02"

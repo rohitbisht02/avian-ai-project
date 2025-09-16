@@ -14,7 +14,6 @@ import soundfile as sf
 import requests
 from bs4 import BeautifulSoup
 import altair as alt
-import streamlit_authenticator as stauth
 import yaml
 from yaml.loader import SafeLoader
 import sqlite3
@@ -69,19 +68,73 @@ def load_resources():
         st.stop()
 
 # --- User Authentication ---
-try:
-    with open(CONFIG_PATH) as file:
-        config = yaml.load(file, Loader=SafeLoader)
-    authenticator = stauth.Authenticate(
-        config['credentials'],
-        config['cookie']['name'],
-        config['cookie']['key'],
-        config['cookie']['expiry_days']
-    )
-    name, authentication_status, username = authenticator.login(fields={'Form name':'Login', 'Username':'Username', 'Password':'Password'})
-except Exception as e:
-    st.error(f"Could not load authentication configuration. Check 'config.yaml'. Error: {e}")
-    authentication_status = None
+import yagmail
+import pyotp
+
+# --- Email OTP Auth ---
+import random
+import string
+import time
+
+EMAIL_CONFIG_PATH = APP_DIR / 'email_config.yaml'
+
+def load_email_config():
+    try:
+        with open(EMAIL_CONFIG_PATH) as f:
+            cfg = yaml.safe_load(f)
+        return cfg['EMAIL_SENDER'], cfg['EMAIL_PASSWORD']
+    except Exception as e:
+        st.error(f"Email config error: {e}. Please edit email_config.yaml.")
+        st.stop()
+
+def send_otp_email(receiver_email, otp):
+    # MOCK/DEMO: Display OTP in the app instead of sending email
+    st.info(f"[Demo] OTP for {receiver_email}: {otp}")
+
+# Store OTPs in session state (for demo; for production, use a DB or cache)
+if 'otp_sent_time' not in st.session_state:
+    st.session_state['otp_sent_time'] = 0
+if 'otp' not in st.session_state:
+    st.session_state['otp'] = ''
+if 'otp_email' not in st.session_state:
+    st.session_state['otp_email'] = ''
+if 'otp_verified' not in st.session_state:
+    st.session_state['otp_verified'] = False
+
+def generate_otp():
+    return ''.join(random.choices(string.digits, k=6))
+
+def email_otp_login():
+    st.title("Avian AI Login")
+    email = st.text_input("Enter your email to receive an OTP:")
+    send_btn = st.button("Send OTP")
+    if send_btn and email:
+        otp = generate_otp()
+        try:
+            send_otp_email(email, otp)
+            st.session_state['otp'] = otp
+            st.session_state['otp_email'] = email
+            st.session_state['otp_sent_time'] = time.time()
+            st.success(f"OTP sent to {email}. Please check your inbox.")
+        except Exception as e:
+            st.error(f"Failed to send OTP: {e}")
+    if st.session_state['otp']:
+        otp_input = st.text_input("Enter the OTP sent to your email:")
+        verify_btn = st.button("Verify OTP")
+        if verify_btn and otp_input:
+            # OTP valid for 5 minutes
+            if time.time() - st.session_state['otp_sent_time'] > 300:
+                st.error("OTP expired. Please request a new one.")
+                st.session_state['otp'] = ''
+            elif otp_input == st.session_state['otp']:
+                st.session_state['otp_verified'] = True
+                st.success("OTP verified! Welcome to Avian AI.")
+            else:
+                st.error("Incorrect OTP. Please try again.")
+    return st.session_state['otp_verified'], st.session_state.get('otp_email', None)
+
+authentication_status, username = email_otp_login()
+name = username
 
 # --- Main App Logic ---
 def init_db():
@@ -94,20 +147,7 @@ def init_db():
     conn.commit()
     return conn
 
-if authentication_status:
-    model, mlb, name_map = load_resources()
-    CLASSES = mlb.classes_
-    db_conn = init_db() # Connect to DB after login
-
-    authenticator.logout('Logout', 'sidebar')
-    st.sidebar.title(f"Welcome *{name}*")
-
-    # (Your other functions like get_history, get_bird_info, preprocess_audio, display_results go here without changes)
-    # ...
-    # (Your main app layout with tabs and buttons goes here without changes)
-    # ...
-
-    # The rest of your app code remains the same as what you provided.
+## Email+OTP login logic will be inserted here
     # Just ensure the load_resources function and the file paths at the top are replaced.
     def add_history(conn, username, bird_name, confidence, image_url, scientific_name):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -216,8 +256,3 @@ if authentication_status:
                         display_results(predictions)
             else:
                 st.warning("No audio recorded. Please start recording first.")
-
-elif authentication_status == False:
-    st.error('Username/password is incorrect')
-elif authentication_status == None:
-    st.warning('Please enter your username and password')
