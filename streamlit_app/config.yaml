@@ -1,0 +1,19 @@
+credentials:
+  usernames:
+    jsmith: # This is the username
+      email: jsmith@example.com
+      name: John Smith
+      password: '$2b$12$L5Aq4FeGS8hhbaaYvTySW.8Ls3Wo9wB7J0EI5zN2odpsBNBYjKyhu' # <-- Hashed password for 'abc'
+    jdoe: # This is the username
+      email: jdoe@example.com
+      name: Jane Doe
+      password: '$2b$12$2qYC5GnC6pOQ7w3s5NV14OBMgaDXaAWe8DOPFseQU1k3uhHw/dBOO' # <-- Hashed password for 'def'
+
+cookie:
+  expiry_days: 30
+  key: a_truly_random_secret_key # <-- CHANGE THIS to something random
+  name: avian_ai_cookie
+
+preauthorized:
+  emails:
+    - melsby@gmail.com

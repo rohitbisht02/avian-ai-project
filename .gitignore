@@ -1,0 +1,9 @@
+# Ignore Python virtual environment
+species_env/
+
+# Ignore large data folders
+data/birds/raw_audio/
+data/birds/raw_images/
+data/birds/spectrograms/
+data/birds/spectrograms_10sec/
+data/birds/raw_audio.zip
